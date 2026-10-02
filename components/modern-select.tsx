@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, Check, Search, X } from "lucide-react";
+import { fuzzyFilterAndSort } from "@/lib/fuzzy-search";
 
 export interface ModernSelectOption {
   value: string;
@@ -74,16 +75,14 @@ export function ModernSelect({
     }
   }, [isOpen, showSearch]);
 
-  // Filter options based on search query
-  const filteredOptions = options.filter((opt) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase().trim();
-    return (
-      opt.label.toLowerCase().includes(query) ||
-      (opt.description && opt.description.toLowerCase().includes(query)) ||
-      (opt.badge && opt.badge.toLowerCase().includes(query))
-    );
-  });
+  // Typo-tolerant fuzzy filtering
+  const filteredOptions = useMemo(() => {
+    return fuzzyFilterAndSort(options, searchQuery, (opt) => [
+      opt.label,
+      opt.description,
+      opt.badge,
+    ]);
+  }, [options, searchQuery]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback(

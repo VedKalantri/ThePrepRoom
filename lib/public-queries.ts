@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { unstable_cache } from "next/cache";
+import { fuzzyFilterAndSort } from "./fuzzy-search";
 
 /**
  * STRICT PUBLIC DATA QUERY LIBRARY
@@ -90,16 +91,22 @@ export async function getPublicExperiences(filter: GetExperiencesFilter = {}) {
 
   if (query) {
     const q = query.trim();
+    // Fuzzy match registered companies to handle typos like "arees" -> "Aress Software"
+    const allCompanies = await getCachedCompaniesList();
+    const fuzzyCompanies = fuzzyFilterAndSort(allCompanies, q, (c) => [c.name, c.industry]).slice(0, 5);
+    const fuzzyCompanyIds = fuzzyCompanies.map((c) => c.id);
+
     where.OR = [
-      { company: { name: { contains: q } } },
-      { role: { title: { contains: q } } },
-      { overallExperience: { contains: q } },
-      { advice: { contains: q } },
+      ...(fuzzyCompanyIds.length > 0 ? [{ companyId: { in: fuzzyCompanyIds } }] : []),
+      { company: { name: { contains: q, mode: "insensitive" } } },
+      { role: { title: { contains: q, mode: "insensitive" } } },
+      { overallExperience: { contains: q, mode: "insensitive" } },
+      { advice: { contains: q, mode: "insensitive" } },
       {
         questionLinks: {
           some: {
             question: {
-              text: { contains: q },
+              text: { contains: q, mode: "insensitive" },
             },
           },
         },
@@ -137,8 +144,17 @@ export async function getPublicExperiences(filter: GetExperiencesFilter = {}) {
     prisma.experience.count({ where }),
   ]);
 
+  const finalExperiences = query
+    ? fuzzyFilterAndSort(experiences, query, (exp) => [
+        exp.company.name,
+        exp.role.title,
+        exp.overallExperience,
+        exp.advice,
+      ])
+    : experiences;
+
   return {
-    experiences,
+    experiences: finalExperiences,
     totalCount,
     totalPages: Math.ceil(totalCount / limit),
     currentPage: page,
@@ -429,47 +445,16 @@ const getCachedCompaniesList = unstable_cache(
  * Fetch all companies for the directory with approved stats
  */
 export async function getAllPublicCompanies(search?: string) {
-  if (!search) {
-    return await getCachedCompaniesList();
+  const allCompanies = await getCachedCompaniesList();
+  if (!search || !search.trim()) {
+    return allCompanies;
   }
 
-  const companies = await prisma.company.findMany({
-    where: { name: { contains: search.trim(), mode: "insensitive" } },
-    include: {
-      _count: {
-        select: {
-          experiences: {
-            where: { status: { in: ["APPROVED", "PENDING"] } },
-          },
-          roles: true,
-        },
-      },
-      experiences: {
-        where: { status: { in: ["APPROVED", "PENDING"] } },
-        select: { interviewYear: true },
-        orderBy: { interviewYear: "desc" },
-        take: 1,
-      },
-      roles: {
-        take: 5,
-      },
-    },
-    orderBy: { name: "asc" },
-  });
-
-  return companies.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-    description: c.description,
-    industry: c.industry,
-    website: c.website,
-    viewsCount: c.viewsCount,
-    approvedExperiencesCount: c._count.experiences,
-    rolesCount: c._count.roles,
-    latestYear: c.experiences[0]?.interviewYear ?? null,
-    sampleRoles: c.roles.map((r) => r.title),
-  }));
+  return fuzzyFilterAndSort(allCompanies, search.trim(), (c) => [
+    c.name,
+    c.industry,
+    ...c.sampleRoles,
+  ]);
 }
 
 /**
@@ -769,9 +754,14 @@ export async function getPublicQuestions(filter: {
 
   if (filter.query) {
     const q = filter.query.trim();
+    const allTopics = await getAllTopics();
+    const fuzzyTopics = fuzzyFilterAndSort(allTopics, q, (t) => t.name).slice(0, 3);
+    const fuzzyTopicIds = fuzzyTopics.map((t) => t.id);
+
     where.OR = [
-      { text: { contains: q } },
-      { topic: { name: { contains: q } } },
+      ...(fuzzyTopicIds.length > 0 ? [{ topicId: { in: fuzzyTopicIds } }] : []),
+      { text: { contains: q, mode: "insensitive" } },
+      { topic: { name: { contains: q, mode: "insensitive" } } },
     ];
   }
 
@@ -797,27 +787,29 @@ export async function getPublicQuestions(filter: {
     take: 50,
   });
 
-  return questions
-    .map((q) => {
-      const companiesSet = new Map<string, string>();
-      q.experienceLinks.forEach((link) => {
-        if (link.experience?.company) {
-          companiesSet.set(link.experience.company.slug, link.experience.company.name);
-        }
-      });
+  const mapped = questions.map((q) => {
+    const companiesSet = new Map<string, string>();
+    q.experienceLinks.forEach((link) => {
+      if (link.experience?.company) {
+        companiesSet.set(link.experience.company.slug, link.experience.company.name);
+      }
+    });
 
-      return {
-        id: q.id,
-        text: q.text,
-        slug: q.slug,
-        round: q.round,
-        difficulty: q.difficulty,
-        topic: q.topic,
-        frequencyCount: q.experienceLinks.length,
-        companies: Array.from(companiesSet.entries()).map(([slug, name]) => ({ slug, name })),
-      };
-    })
-    .sort((a, b) => b.frequencyCount - a.frequencyCount);
+    return {
+      id: q.id,
+      text: q.text,
+      slug: q.slug,
+      round: q.round,
+      difficulty: q.difficulty,
+      topic: q.topic,
+      frequencyCount: q.experienceLinks.length,
+      companies: Array.from(companiesSet.entries()).map(([slug, name]) => ({ slug, name })),
+    };
+  });
+
+  return filter.query
+    ? fuzzyFilterAndSort(mapped, filter.query, (q) => [q.text, q.topic?.name || ""])
+    : mapped.sort((a, b) => b.frequencyCount - a.frequencyCount);
 }
 
 /**
@@ -901,59 +893,78 @@ export async function globalSearch(query: string) {
     return { experiences: [], companies: [], questions: [], topics: [] };
   }
 
-  const [experiences, companies, questions, topics] = await Promise.all([
+  // 1. Fuzzy match companies from the cached catalog
+  const allCompanies = await getCachedCompaniesList();
+  const matchedCompanies = fuzzyFilterAndSort(allCompanies, q, (c) => [
+    c.name,
+    c.industry,
+    ...c.sampleRoles,
+  ])
+    .slice(0, 5)
+    .map((c) => ({
+      ...c,
+      _count: {
+        experiences: c.approvedExperiencesCount,
+        roles: c.rolesCount,
+      },
+    }));
+  const matchedCompanyIds = matchedCompanies.map((c) => c.id);
+
+  // 2. Fuzzy match topics
+  const allTopics = await getAllTopics();
+  const matchedTopics = fuzzyFilterAndSort(allTopics, q, (t) => [t.name, t.category]).slice(0, 4);
+  const matchedTopicIds = matchedTopics.map((t) => t.id);
+
+  // 3. Query experiences & questions incorporating fuzzy IDs and text search
+  const [experiences, questions] = await Promise.all([
     prisma.experience.findMany({
       where: {
         status: { in: ["APPROVED", "PENDING"] },
         OR: [
-          { company: { name: { contains: q } } },
-          { role: { title: { contains: q } } },
-          { overallExperience: { contains: q } },
+          ...(matchedCompanyIds.length > 0 ? [{ companyId: { in: matchedCompanyIds } }] : []),
+          { company: { name: { contains: q, mode: "insensitive" } } },
+          { role: { title: { contains: q, mode: "insensitive" } } },
+          { overallExperience: { contains: q, mode: "insensitive" } },
         ],
       },
-      take: 5,
+      take: 10,
       include: {
         company: true,
         role: true,
       },
     }),
-    prisma.company.findMany({
-      where: {
-        name: { contains: q, mode: "insensitive" },
-      },
-      take: 5,
-      include: {
-        _count: {
-          select: {
-            experiences: { where: { status: { in: ["APPROVED", "PENDING"] } } },
-          },
-        },
-      },
-    }),
     prisma.question.findMany({
       where: {
-        text: { contains: q },
+        OR: [
+          ...(matchedTopicIds.length > 0 ? [{ topicId: { in: matchedTopicIds } }] : []),
+          { text: { contains: q, mode: "insensitive" } },
+        ],
         experienceLinks: {
           some: { experience: { status: { in: ["APPROVED", "PENDING"] } } },
         },
       },
-      take: 8,
+      take: 15,
       include: {
         topic: true,
       },
     }),
-    prisma.topic.findMany({
-      where: {
-        name: { contains: q },
-      },
-      take: 4,
-    }),
   ]);
 
+  const rankedExperiences = fuzzyFilterAndSort(experiences, q, (exp) => [
+    exp.company.name,
+    exp.role.title,
+    exp.overallExperience,
+  ]).slice(0, 5);
+
+  const rankedQuestions = fuzzyFilterAndSort(questions, q, (item) => [
+    item.text,
+    item.topic?.name || "",
+  ]).slice(0, 8);
+
   return {
-    experiences,
-    companies,
-    questions,
-    topics,
+    experiences: rankedExperiences,
+    companies: matchedCompanies,
+    questions: rankedQuestions,
+    topics: matchedTopics,
   };
 }

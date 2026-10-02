@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react";
+import { fuzzyFilterAndSort } from "@/lib/fuzzy-search";
 
 interface CompanyWithCount {
   name: string;
@@ -148,15 +149,11 @@ export function ExperienceSidebarFilters({
   const [roleSearch, setRoleSearch] = useState("");
 
   const filteredCompanies = useMemo(() => {
-    if (!companySearch.trim()) return companies;
-    const q = companySearch.toLowerCase().trim();
-    return companies.filter((c) => c.name.toLowerCase().includes(q));
+    return fuzzyFilterAndSort(companies, companySearch, (c) => c.name);
   }, [companies, companySearch]);
 
   const filteredRoles = useMemo(() => {
-    if (!roleSearch.trim()) return roles;
-    const q = roleSearch.toLowerCase().trim();
-    return roles.filter((r) => r.title.toLowerCase().includes(q));
+    return fuzzyFilterAndSort(roles, roleSearch, (r) => r.title);
   }, [roles, roleSearch]);
 
   const updateParam = (key: string, value: string) => {
