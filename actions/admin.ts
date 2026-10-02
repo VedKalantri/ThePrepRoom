@@ -219,6 +219,11 @@ export async function findOrCreateCompanyAction(name: string, industry?: string)
     return { success: true, company: existing };
   }
 
+  // Only admins can register new companies
+  if (user.role !== "ADMIN") {
+    return { error: "Only administrators can register new companies. Please select an existing company from the directory." };
+  }
+
   const company = await prisma.company.create({
     data: {
       name: trimmed,

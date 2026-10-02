@@ -26,7 +26,7 @@ import {
   RoundEntry,
   QuestionEntry,
 } from "@/actions/experience";
-import { findOrCreateCompanyAction, findOrCreateRoleAction } from "@/actions/admin";
+import { findOrCreateRoleAction } from "@/actions/admin";
 import { formatPlacementType, formatResultStatus } from "@/lib/utils";
 import { ModernSelect, ModernSelectOption } from "@/components/modern-select";
 import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal";
@@ -231,9 +231,6 @@ export function ShareExperienceWizard({
 
   // Dynamic company list & role creation state
   const [companyList, setCompanyList] = useState(companies);
-  const [isAddingNewCompany, setIsAddingNewCompany] = useState(false);
-  const [customCompanyName, setCustomCompanyName] = useState("");
-  const [companyCreationLoading, setCompanyCreationLoading] = useState(false);
 
   const [isAddingNewRole, setIsAddingNewRole] = useState(false);
   const [customRoleTitle, setCustomRoleTitle] = useState("");
@@ -252,21 +249,6 @@ export function ShareExperienceWizard({
   ) {
     setSelectedRoleId(activeRoles[0].id);
   }
-
-  const handleAddNewCompany = async () => {
-    if (!customCompanyName.trim()) return;
-    setCompanyCreationLoading(true);
-    const res = await findOrCreateCompanyAction(customCompanyName.trim());
-    setCompanyCreationLoading(false);
-    if (res?.company) {
-      const newComp = { ...res.company, roles: res.company.roles || [] };
-      setCompanyList((prev) => [...prev, newComp]);
-      setSelectedCompanyId(newComp.id);
-      setIsAddingNewCompany(false);
-      setCustomCompanyName("");
-      setIsAddingNewRole(true);
-    }
-  };
 
   const handleAddNewRole = async (): Promise<string | null> => {
     if (!customRoleTitle.trim() || !selectedCompanyId) return null;
@@ -555,58 +537,28 @@ export function ShareExperienceWizard({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs sm:text-sm">
             {/* Company Selection & On-the-fly Creation */}
+            {/* Company Selection (Admin managed catalog) */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block font-semibold text-slate-700 dark:text-zinc-300">
                   Company *
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingNewCompany(!isAddingNewCompany)}
-                  className="text-xs font-semibold text-blue-500 hover:text-blue-400 transition-colors"
-                >
-                  {isAddingNewCompany ? "Select existing company" : "+ Add new company"}
-                </button>
+                <span className="text-[11px] text-zinc-500 font-normal">
+                  Registered Directory
+                </span>
               </div>
 
-              {isAddingNewCompany ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={customCompanyName}
-                    onChange={(e) => setCustomCompanyName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddNewCompany();
-                      }
-                    }}
-                    placeholder="Enter company name..."
-                    className="flex-1 rounded-xl border border-zinc-700 bg-[#0c0d10] px-4 py-2.5 text-white placeholder:text-zinc-500 focus:border-blue-500 focus:outline-hidden"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddNewCompany}
-                    disabled={companyCreationLoading}
-                    className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2.5 text-xs font-semibold text-white shrink-0"
-                  >
-                    {companyCreationLoading ? "Adding..." : "Add"}
-                  </button>
-                </div>
-              ) : (
-                <ModernSelect
-                  value={selectedCompanyId}
-                  onChange={(val) => {
-                    setSelectedCompanyId(val);
-                    setIsAddingNewRole(false);
-                  }}
-                  options={companyList.map((c) => ({ value: c.id, label: c.name }))}
-                  placeholder="Select Company"
-                  searchable={true}
-                  searchPlaceholder="Search 195+ companies..."
-                />
-              )}
+              <ModernSelect
+                value={selectedCompanyId}
+                onChange={(val) => {
+                  setSelectedCompanyId(val);
+                  setIsAddingNewRole(false);
+                }}
+                options={companyList.map((c) => ({ value: c.id, label: c.name }))}
+                placeholder="Select Company"
+                searchable={true}
+                searchPlaceholder="Search 195+ companies..."
+              />
             </div>
 
             {/* Role Selection & On-the-fly Creation */}
