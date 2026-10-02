@@ -342,12 +342,12 @@ export const getPopularCompanies = unstable_cache(
       latestYear: c.experiences[0]?.interviewYear ?? null,
     }));
 
-    // If fewer than 4 companies have experiences yet, supplement with registered companies from DB
-    if (result.length < 4) {
+    // If fewer than limit companies have experiences yet, supplement with registered companies from DB
+    if (result.length < limit) {
       const existingIds = new Set(result.map((c) => c.id));
       const fallbackCompanies = await prisma.company.findMany({
         where: { id: { notIn: Array.from(existingIds) } },
-        take: 4 - result.length,
+        take: limit - result.length,
         include: {
           _count: {
             select: {
@@ -434,7 +434,7 @@ export async function getAllPublicCompanies(search?: string) {
   }
 
   const companies = await prisma.company.findMany({
-    where: { name: { contains: search.trim() } },
+    where: { name: { contains: search.trim(), mode: "insensitive" } },
     include: {
       _count: {
         select: {
@@ -919,7 +919,7 @@ export async function globalSearch(query: string) {
     }),
     prisma.company.findMany({
       where: {
-        name: { contains: q },
+        name: { contains: q, mode: "insensitive" },
       },
       take: 5,
       include: {

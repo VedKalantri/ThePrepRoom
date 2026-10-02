@@ -603,6 +603,8 @@ export function ShareExperienceWizard({
                   }}
                   options={companyList.map((c) => ({ value: c.id, label: c.name }))}
                   placeholder="Select Company"
+                  searchable={true}
+                  searchPlaceholder="Search 195+ companies..."
                 />
               )}
             </div>
