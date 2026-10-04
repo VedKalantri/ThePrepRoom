@@ -168,6 +168,7 @@ export function Navbar({ currentUser: initialUser }: NavbarProps) {
               {/* Modern Glassmorphic Trigger Chip */}
               <button
                 type="button"
+                suppressHydrationWarning
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className={`flex items-center gap-2.5 rounded-full border py-1 pl-1.5 pr-3 transition-all duration-200 outline-none cursor-pointer group active:scale-95 ${
                   userMenuOpen
@@ -317,6 +318,7 @@ export function Navbar({ currentUser: initialUser }: NavbarProps) {
                   {/* Sign Out Button */}
                   <button
                     type="button"
+                    suppressHydrationWarning
                     onClick={handleLogout}
                     disabled={isPending}
                     className="flex w-full items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors text-left outline-none cursor-pointer"
@@ -339,6 +341,7 @@ export function Navbar({ currentUser: initialUser }: NavbarProps) {
           {/* Mobile menu trigger */}
           <button
             type="button"
+            suppressHydrationWarning
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 outline-none cursor-pointer"
             aria-label="Toggle navigation menu"
@@ -414,6 +417,7 @@ export function Navbar({ currentUser: initialUser }: NavbarProps) {
                 </Link>
                 <button
                   type="button"
+                  suppressHydrationWarning
                   onClick={handleLogout}
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rose-400 hover:bg-rose-500/10 rounded-lg text-left"
                 >

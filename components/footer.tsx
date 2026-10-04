@@ -137,6 +137,7 @@ export function Footer() {
               />
               <button
                 type="submit"
+                suppressHydrationWarning
                 className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-all hover:scale-105 active:scale-95"
                 aria-label="Subscribe"
               >

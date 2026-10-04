@@ -48,6 +48,7 @@ export function TopStoriesCarousel({ stories }: TopStoriesCarouselProps) {
       <div className="hidden sm:flex items-center gap-2 absolute -top-12 right-0 z-10">
         <button
           type="button"
+          suppressHydrationWarning
           onClick={() => scroll("left")}
           className="flex h-8 w-8 items-center justify-center rounded-full border border-stone-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-all duration-250 ease-out hover:scale-105 active:scale-95 shadow-xs"
           aria-label="Previous story"
@@ -56,6 +57,7 @@ export function TopStoriesCarousel({ stories }: TopStoriesCarouselProps) {
         </button>
         <button
           type="button"
+          suppressHydrationWarning
           onClick={() => scroll("right")}
           className="flex h-8 w-8 items-center justify-center rounded-full border border-stone-300 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-all duration-250 ease-out hover:scale-105 active:scale-95 shadow-xs"
           aria-label="Next story"
