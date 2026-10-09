@@ -89,7 +89,7 @@ model User {
   linkedinUrl     String?       // LinkedIn profile link
   placementStatus String?       @default("PREPARING") // OFFER_ACCEPTED, ACTIVELY_INTERVIEWING, PREPARING, SEEKING_INTERNSHIP, HIGHER_STUDIES
   placedCompany   String?       // Company & role name if placed
-  oauthProvider   String?       // "google" or "linkedin"
+  oauthProvider   String?       // "google", "linkedin", or "github"
   oauthId         String?       // OAuth provider unique subject ID
   totpSecret      String?       // Admin TOTP 2FA secret (base32)
   totpEnabled     Boolean       @default(false)

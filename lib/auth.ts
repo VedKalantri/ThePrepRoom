@@ -15,7 +15,7 @@ export interface SessionPayload {
   email: string;
   role: string;
   name: string;
-  authMethod?: "credentials" | "google" | "linkedin" | "totp";
+  authMethod?: "credentials" | "google" | "linkedin" | "github" | "totp";
   adminVerified?: boolean;
 }
 
